@@ -131,3 +131,8 @@ tests du mode console, du prototype Python, de l'outil de mesure du délai et du
 - Pilote Linux du C985 (même famille de firmware) : https://github.com/FireCulex/avermedia-c985-linux
 - Projet abandonné pour le LGP C875 (trace USB Windows) : https://github.com/Trouffman/octv_gears_lgp
 - Pilote Windows du GL310 (copie archive.org) : https://archive.org/details/aver-media-gl-310-usb-hd-capture-device-v-3.2802.64.40
+
+## Licence
+
+MIT ([LICENSE](LICENSE)), sauf `studio/web/mpegts.js`, copie de [mpegts.js](https://github.com/xqq/mpegts.js) sous
+licence Apache 2.0. Les firmwares et pilotes d'AVerMedia ne sont pas dans ce dépôt (`tools/fetch-vendor.sh`).
