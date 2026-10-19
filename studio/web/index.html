@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GL310 Studio</title>
+<style>
+  :root { --bg:#111317; --panel:#1b1e24; --line:#2a2e36; --text:#e8eaed; --muted:#9aa0a6; --accent:#4f8cff; --red:#ff4d4f; --green:#3ecf8e; --amber:#f5a524; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  .badge { padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; background:var(--line); color:var(--muted); }
+  .badge.streaming { background:rgba(62,207,142,.15); color:var(--green); }
+  .badge.starting { background:rgba(245,165,36,.15); color:var(--amber); }
+  .badge.failed, .badge.absent { background:rgba(255,77,79,.15); color:var(--red); }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; padding:16px 20px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  .video { background:#000; border-radius:10px; overflow:hidden; aspect-ratio:16/9; position:relative; }
+  video { width:100%; height:100%; display:block; }
+  .overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); pointer-events:none; }
+  .controls { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 14px; font:inherit; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:default; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.rec { border-color:var(--red); color:var(--red); }
+  button.rec.on { background:var(--red); color:#fff; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px; }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; }
+  dl { display:grid; grid-template-columns:auto 1fr; gap:6px 12px; margin:0; }
+  dt { color:var(--muted); } dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
+  label { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:8px 0; }
+  select, input[type=range] { width:150px; }
+  select { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:4px; }
+  .hint { color:var(--muted); font-size:12px; }
+  ul { list-style:none; padding:0; margin:0; } li { display:flex; justify-content:space-between; padding:3px 0; font-size:13px; }
+  pre { margin:0; font-size:11px; color:var(--muted); white-space:pre-wrap; max-height:150px; overflow:auto; }
+  .error { color:var(--red); font-size:13px; min-height:1em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GL310 Studio</h1>
+  <span id="badge" class="badge">…</span>
+  <span id="step" class="hint"></span>
+</header>
+<main>
+  <section>
+    <div class="video">
+      <video id="video" muted autoplay playsinline controls></video>
+      <div id="overlay" class="overlay">Aperçu arrêté</div>
+    </div>
+    <div class="controls">
+      <button id="start" class="primary">Démarrer</button>
+      <button id="stop">Arrêter</button>
+      <button id="rec" class="rec">● Enregistrer</button>
+      <span id="recinfo" class="hint"></span>
+    </div>
+    <p class="error" id="error"></p>
+    <div class="panel">
+      <h2>Journal</h2>
+      <pre id="logs"></pre>
+    </div>
+  </section>
+  <aside>
+    <div class="panel">
+      <h2>État du boîtier</h2>
+      <dl>
+        <dt>Boîtier</dt><dd id="s-box">—</dd>
+        <dt>Signal HDMI</dt><dd id="s-signal">—</dd>
+        <dt>Firmware</dt><dd id="s-fw">—</dd>
+        <dt>Débit reçu</dt><dd id="s-mbps">—</dd>
+        <dt>Messages/s</dt><dd id="s-msg">—</dd>
+      </dl>
+    </div>
+    <div class="panel">
+      <h2>Vidéo</h2>
+      <label>Débit <select id="video_kbps"></select></label>
+      <label>Image clé toutes les <select id="keyframe_interval"></select></label>
+      <h2 style="margin-top:14px">Image <span class="hint">(à chaud)</span></h2>
+      <label>Luminosité <input id="brightness" type="range" min="0" max="255"></label>
+      <label>Contraste <input id="contrast" type="range" min="0" max="255"></label>
+      <h2 style="margin-top:14px">Son</h2>
+      <label>Débit audio <select id="audio_kbps"></select></label>
+      <label>Son sur la prise AUDIO OUT <input id="audio_out" type="checkbox"></label>
+      <button id="apply" disabled>Appliquer</button>
+      <div class="hint">Débits et son : l'encodeur redémarre (quelques secondes).</div>
+    </div>
+    <div class="panel">
+      <h2>Enregistrements</h2>
+      <ul id="recordings"></ul>
+      <div class="hint" id="recdir"></div>
+    </div>
+  </aside>
+</main>
+<script src="/mpegts.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const LABELS = { absent: "Boîtier débranché", idle: "Prêt", starting: "Démarrage", streaming: "En direct", failed: "Erreur" };
+const ENCODER_FIELDS = ["video_kbps", "keyframe_interval", "audio_kbps", "audio_out"];
+let player = null, lastState = null, formReady = false, dirty = false;
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json();
+  $("error").textContent = data.error || "";
+  if (data.status) render(data);
+  return data;
+}
+
+function startPlayer() {
+  stopPlayer();
+  if (!mpegts.isSupported()) { $("overlay").textContent = "Lecteur non pris en charge par ce navigateur"; return; }
+  player = mpegts.createPlayer({ type: "mpegts", isLive: true, url: "/stream.ts" },
+    { enableStashBuffer: false, liveBufferLatencyChasing: true, liveBufferLatencyMaxLatency: 1.5, liveBufferLatencyMinRemain: 0.3 });
+  player.attachMediaElement($("video"));
+  player.load();
+  player.play().catch(() => {});
+  $("overlay").textContent = "";
+}
+
+function stopPlayer() {
+  if (player) { player.destroy(); player = null; }
+  $("overlay").textContent = "Aperçu arrêté";
+}
+
+function fillSelect(id, values, label) {
+  $(id).innerHTML = values.map(v => `<option value="${v}">${label(v)}</option>`).join("");
+}
+
+function render(data) {
+  const s = data.status;
+  $("badge").textContent = LABELS[s.state] || s.state;
+  $("badge").className = "badge " + s.state;
+  $("step").textContent = s.state === "starting" ? s.step : (s.state === "failed" ? s.error : "");
+  $("s-box").textContent = s.state === "absent" ? "débranché" : "branché";
+  const sig = s.signal;
+  $("s-signal").textContent = s.state === "absent" ? "—" : (sig ? `${sig.width}×${sig.height} à ${sig.refresh_hz} Hz` : "pas de signal");
+  $("s-fw").textContent = s.state === "streaming" ? "chargé" : (s.state === "idle" ? (s.firmware_loaded ? "chargé" : "absent") : "—");
+  $("s-mbps").textContent = s.state === "streaming" ? `${s.mbps} Mbit/s` : "—";
+  $("s-msg").textContent = s.state === "streaming" ? s.messages_per_s : "—";
+
+  $("start").disabled = s.state === "absent" || s.state === "starting";
+  $("stop").disabled = s.state !== "streaming";
+  const rec = s.state === "streaming" ? s.recording : null;
+  $("rec").disabled = s.state !== "streaming";
+  $("rec").classList.toggle("on", !!rec);
+  $("rec").textContent = rec ? "■ Arrêter l'enregistrement" : "● Enregistrer";
+  $("recinfo").textContent = rec ? `${Math.floor(rec.seconds / 60)}:${String(Math.floor(rec.seconds % 60)).padStart(2, "0")} · ${(rec.bytes / 1e6).toFixed(0)} Mo` : "";
+
+  if (!formReady) {
+    fillSelect("video_kbps", data.choices.video_kbps, v => `${v / 1000} Mbit/s`);
+    fillSelect("keyframe_interval", data.choices.keyframe_interval, v => `${v / 30} s`);
+    fillSelect("audio_kbps", data.choices.audio_kbps, v => `${v} kbit/s`);
+    formReady = true;
+  }
+  if (!dirty) {
+    for (const k of ["video_kbps", "keyframe_interval", "audio_kbps", "brightness", "contrast"]) $(k).value = data.settings[k];
+    $("audio_out").checked = data.settings.audio_out;
+  }
+
+  $("recordings").innerHTML = data.recordings.map(r => `<li><span>${r.name}</span><span class="hint">${r.mb} Mo</span></li>`).join("") || '<li class="hint">Aucun pour l\'instant</li>';
+  $("recdir").textContent = data.recordings_dir;
+  $("logs").textContent = data.logs.join("\n");
+
+  if (s.state === "streaming" && lastState !== "streaming") startPlayer();
+  if (s.state !== "streaming" && lastState === "streaming") stopPlayer();
+  lastState = s.state;
+}
+
+$("start").onclick = () => api("/api/start", {});
+$("stop").onclick = () => api("/api/stop", {});
+$("rec").onclick = () => api("/api/record", { on: !$("rec").classList.contains("on") });
+for (const k of ENCODER_FIELDS) $(k).onchange = () => { dirty = true; $("apply").disabled = false; };
+for (const k of ["brightness", "contrast"]) $(k).onchange = () => api("/api/settings", { [k]: Number($(k).value) });
+$("apply").onclick = async () => {
+  await api("/api/settings", { video_kbps: Number($("video_kbps").value), keyframe_interval: Number($("keyframe_interval").value),
+                               audio_kbps: Number($("audio_kbps").value), audio_out: $("audio_out").checked });
+  dirty = false; $("apply").disabled = true; lastState = null;   // l'aperçu se reconnectera après la relance
+};
+
+setInterval(() => api("/api/status").catch(() => { $("badge").textContent = "Serveur arrêté"; $("badge").className = "badge failed"; }), 1000);
+api("/api/status");
+</script>
+</body>
+</html>

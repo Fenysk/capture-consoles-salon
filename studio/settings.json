@@ -1,0 +1,8 @@
+{
+  "video_kbps": 12000,
+  "keyframe_interval": 60,
+  "audio_kbps": 128,
+  "audio_out": false,
+  "brightness": 147,
+  "contrast": 129
+}

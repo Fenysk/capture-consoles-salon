@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refuse le commit tant que le gate n'est pas vert.
+exec "$(git rev-parse --show-toplevel)/gate.sh"

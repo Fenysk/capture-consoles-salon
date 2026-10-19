@@ -1,0 +1,29 @@
+# Sources tierces (firmwares et pilotes d'AVerMedia, projets d'autres auteurs) : tools/fetch-vendor.sh
+/vendor/
+
+# VM Windows : disque, ISO, pilote et ffmpeg du CD, identité et TPM propres à la machine
+/vm/*.qcow2
+/vm/*.iso
+/vm/iso/
+/vm/OVMF_VARS.fd
+/vm/tpm/
+/vm/vm-identity
+/vm/driver-cd/GL310/
+/vm/driver-cd/ffmpeg/
+
+# Données produites sur place (traces USB, journaux, images, vidéos)
+/logs/
+/captures/
+/recordings/
+
+# Compilation
+/studio-rs/target/
+__pycache__/
+/driver/gl310/*.o
+/driver/gl310/*.ko
+/driver/gl310/*.mod
+/driver/gl310/*.mod.c
+/driver/gl310/.*.cmd
+/driver/gl310/modules.order
+/driver/gl310/Module.symvers
+/driver/gl310/tests/test_model
