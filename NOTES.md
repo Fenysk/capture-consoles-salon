@@ -433,3 +433,22 @@ par la session de la tour). Le jeu revient dans OBS ~7 s après la relance, tout
 par seconde). Ces 7 s comprennent le délai normal du jeu (~2,5 s), la reconnexion (1 s), l'attente d'une image clé
 (0 à 2 s) et l'analyse du flux (0,5 s). Passer aux images clés toutes les 1 s ne gagnerait qu'~1 s, et seulement
 dans ce cas rare : non retenu.
+
+**Le délai du jeu grandit pendant le live (19/10, 19:22–19:38, mesures en lecture seule)** : sur le portable, un
+lecteur local relève toutes les 30 s le débit produit, l'horloge PCR et la connexion TCP de la tour. Sur la tour, la
+session qui lit OBS relève le `mediaCursor` de « Console de jeu » toutes les 5 s.
+- L'horloge PCR du boîtier suit exactement l'heure du portable (±5 ms par 30 s, sans tendance) : pas de dérive.
+- La tour lit exactement au rythme de production (8,2–8,3 Mbit/s), jamais plus vite, avec la fenêtre TCP de
+  réception pleine 98 % du temps.
+- La file d'envoi vers la tour passe de 20 Ko (19:24:54) à 2 Mo après un à-coup de 2,76 s côté OBS (19:28:26), puis à 2,6 Mo à 19:38.
+- Le curseur d'OBS perd ~4,2 s en 14 min, surtout par à-coups.
+- Réseau : 75 retransmissions pour 1 Go, toutes des doublons (pics de latence Wi-Fi, aucune perte).
+
+→ La Source média ffmpeg d'OBS ne rattrape jamais un retard : chaque à-coup s'ajoute jusqu'à la prochaine
+reconnexion. Le hub reçoit environ un morceau par image (~33 ms), donc les 1 024 morceaux de file d'un lecteur
+représentent ~35 s.
+
+**Connexion figée resservie** : une scène sans le jeu (émission de clips, 19:15:31) met la Source média en pause.
+OBS garde la connexion ouverte sans lire. Au retour sur la scène du jeu (19:22:56), il a repris cette connexion et
+diffusé ~35 s de jeu vieux de ~7 min, puis s'est reconnecté (saut de curseur de +451 s). Correctif :
+délai d'écriture de 10 s dans `http.rs` ; un lecteur qui ne lit plus est coupé.
