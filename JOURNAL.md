@@ -1,5 +1,10 @@
 # Journal des décisions
 
+## 2026-10-19 — Limite de retard d'un client réseau relevée à ~10 s
+**Contexte.** La limite de ~2,5 s (file de 60 morceaux) a coupé OBS 6 fois entre 19:57 et 20:00 en plein live : à chaque connexion, OBS prend ~1,5 s de retard au démarrage, et quelques à-coups suffisent à le faire recouper en boucle (5 à 7 s sans jeu à chaque fois).
+**Décision.** File de 300 morceaux (~10 s) : la limite ne protège plus que contre l'emballement (lecteur bloqué, retard de plusieurs secondes) ; la coupure d'un lecteur qui ne lit plus pendant 10 s et le tampon d'envoi limité restent. La dérive normale d'OBS (quelques secondes par heure) sera rattrapée par le lecteur mpegts.js (`liveSync`), pas par des coupures.
+**Renoncement.** Une limite entre 3 et 5 s (même boucle dès que le Wi-Fi a des à-coups) ; supprimer la limite (un lecteur bloqué pouvait retenir ~35 s).
+
 ## 2026-10-19 — Un client réseau ne peut pas accumuler plus de ~2,5 s de retard
 **Contexte.** La Source média d'OBS ne rattrape jamais un à-coup : elle lit au rythme 1× et le retard pris reste dans la file du portable (mesuré : +4,2 s en 14 min de live, file TCP passée à 2,6 Mo). La file d'un lecteur du hub (1 024 morceaux, ~1 par image) pouvait retenir ~35 s, plus jusqu'à 4 Mo dans le noyau. Une connexion qui ne lit plus restait ouverte et a resservi 35 s de jeu vieux de 7 min.
 **Décision.** Les clients réseau ont une file de 60 morceaux (~2 s) et un tampon d'envoi noyau limité à 256 Kio (SO_SNDBUF). Au-delà, le hub les coupe et OBS se reconnecte au direct en ~1 s (`reconnect_delay_sec` 1), avec quelques secondes sans jeu. Un client qui ne lit plus pendant 10 s est coupé. Le vrai remède sans coupure est côté lecteur : mpegts.js avec rattrapage (`liveSync`) dans une page de stream_twitch, demandé aux sessions de la tour.

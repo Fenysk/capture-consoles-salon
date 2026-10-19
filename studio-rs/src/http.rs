@@ -1,11 +1,11 @@
 //! Flux réseau : `GET /stream.ts` renvoie le MPEG-TS en direct (OBS « Source média », VLC, ffplay,
 //! et plus tard l'app web de la tour avec mpegts.js — d'où l'en-tête CORS).
-//! La Source média d'OBS ne rattrape jamais un retard : un client ne peut donc pas en accumuler plus que sa file
-//! (`BACKLOG_CHUNKS`, ~1 morceau par image) et le tampon d'envoi du noyau (`SEND_BUFFER`) ; au-delà, le hub le
-//! coupe et il se reconnecte au direct. Un lecteur qui ne lit plus (Source média hors antenne) est coupé au bout de
+//! Un client ne peut pas accumuler plus de retard que sa file (`BACKLOG_CHUNKS`, ~1 morceau par image) et le tampon
+//! d'envoi du noyau (`SEND_BUFFER`) ; au-delà, le hub le coupe et il se reconnecte au direct (garde-fou contre
+//! l'emballement ; la dérive normale d'OBS se règle côté lecteur). Un lecteur qui ne lit plus (Source média hors antenne) est coupé au bout de
 //! `STALLED_CLIENT`, sinon il reprendrait plus tard un flux vieux de plusieurs minutes.
 
-const BACKLOG_CHUNKS: usize = 60; // ~2 s
+const BACKLOG_CHUNKS: usize = 300; // ~10 s : OBS prend ~1,5 s de retard à chaque connexion, une limite serrée le recoupe en boucle
 const SEND_BUFFER: libc::c_int = 256 * 1024; // le noyau double la valeur : ~0,5 s à 8 Mbit/s
 const STALLED_CLIENT: Duration = Duration::from_secs(10);
 
