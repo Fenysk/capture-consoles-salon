@@ -458,3 +458,9 @@ OBS montre ~1,5 s la dernière image d'avant (figée, pas de vieux jeu qui bouge
 par l'appli), rouvre un flux neuf, et le jeu est en direct ~7 s après le retour (avant : ~35 s de jeu vieux de 7 min).
 Au démarrage, OBS prend ~1,5 s de retard par à-coups, puis lit à 1× (0,9995 à 1,0033). Piste côté OBS : `close_when_inactive` true
 (proposé à Fenysk par la session de la tour) ; remède de fond : lecteur mpegts.js avec rattrapage.
+
+**SRT en service dans OBS (19/10, 20:30:39)** : « Console de jeu » en `srt://IP-DU-PORTABLE:4850?mode=caller&latency=300000`
+(posé par la session de la tour, OBS hors live). Le jeu revient en 7,8 s. Sur 895 s à l'antenne (20:31:30 → 20:46:25),
+rapport curseur/heure 0,99985 : 134 ms pris en 15 min (bruit de mesure), contre 4,2 s en 14 min en HTTP.
+Pentes minute par minute entre 0,99882 et 1,00033, sans tendance ; aucun saut. **Le délai ne grandit plus** :
+on garde le SRT, le HTTP 4848 reste en secours.
