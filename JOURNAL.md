@@ -1,5 +1,10 @@
 # Journal des décisions
 
+## 2026-10-19 — Le jeu part aussi en SRT (latence fixe), le HTTP reste en secours
+**Contexte.** En TCP sur le Wi-Fi, chaque pic de latence retarde des données qui arrivent quand même. La Source média d'OBS les lit à 1× sans jamais rattraper, donc le délai du jeu grandit pendant le live (+4 s en 14 min). Fenysk garde le Wi-Fi et a choisi le SRT, dans la session de la tour.
+**Décision.** GL310 Studio écoute aussi en SRT, mode live (TSBPD, tlpktdrop, paquets de 1316 octets = 7 paquets TS), en listener sur UDP 4850, avec une latence de 300 ms. Un paquet plus en retard que la latence est jeté au lieu de s'accumuler. Chaque appelant est un client réseau du hub, comme en HTTP : il démarre sur PAT + PMT + une image clé neuve et il est coupé à chaque redémarrage de l'encodeur. L'appli appelle directement libsrt (installée avec ffmpeg, `libsrt-gnutls.so.1.5`), sans paquet -dev. OBS passe la « Console de jeu » en `srt://…:4850?mode=caller&latency=300000`.
+**Renoncement.** Un ffmpeg intermédiaire (`-c copy` vers srt://) : bloqué en attente d'un appelant, il ne lit plus son entrée et enverrait du vieux flux à la connexion. La crate srt-tokio : tokio entier pour un seul envoi. `srt-live-transmit` : paquet à installer avec sudo. Le lecteur mpegts.js : écarté par Fenysk pour l'instant.
+
 ## 2026-10-19 — Limite de retard d'un client réseau relevée à ~10 s
 **Contexte.** La limite de ~2,5 s (file de 60 morceaux) a coupé OBS 6 fois entre 19:57 et 20:00 en plein live : à chaque connexion, OBS prend ~1,5 s de retard au démarrage, et quelques à-coups suffisent à le faire recouper en boucle (5 à 7 s sans jeu à chaque fois).
 **Décision.** File de 300 morceaux (~10 s) : la limite ne protège plus que contre l'emballement (lecteur bloqué, retard de plusieurs secondes) ; la coupure d'un lecteur qui ne lit plus pendant 10 s et le tampon d'envoi limité restent. La dérive normale d'OBS (quelques secondes par heure) sera rattrapée par le lecteur mpegts.js (`liveSync`), pas par des coupures.

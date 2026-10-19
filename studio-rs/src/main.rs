@@ -2,9 +2,10 @@
 //!
 //! L'appli parle elle-même au boîtier en USB (pas de pilote noyau) et publie :
 //!   - une caméra virtuelle PipeWire « GL310 » et le son du jeu en entrée audio « GL310-Audio » (OBS sous Linux) ;
-//!   - le flux MPEG-TS en HTTP sur /stream.ts, ouvert au réseau local (OBS « Source média » sur la tour, app web).
+//!   - le flux MPEG-TS en SRT (UDP 4850, latence fixe : OBS « Source média » sur la tour) et en HTTP sur
+//!     /stream.ts (secours, app web), ouverts au réseau local.
 //!
-//! Usage : gl310-studio [--listen 0.0.0.0:4848]   (--listen 127.0.0.1:4848 pour ce PC seulement)
+//! Usage : gl310-studio [--listen 0.0.0.0:4848]   (--listen 127.0.0.1:4848 pour ce PC seulement ; SRT sur la même adresse, port 4850)
 
 mod app;
 mod device;
@@ -16,16 +17,17 @@ mod model;
 mod outputs;
 mod picture;
 mod recorder;
+mod srt;
 mod tables;
 mod ts;
 
-use std::net::{IpAddr, UdpSocket};
+use std::net::{IpAddr, SocketAddrV4, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use eframe::egui;
 
-use crate::app::{Paths, StudioApp};
+use crate::app::{Paths, StreamUrls, StudioApp};
 use crate::engine::Engine;
 use crate::hub::Hub;
 use crate::journal::Journal;
@@ -34,6 +36,7 @@ use crate::outputs::Outputs;
 
 const PROJECT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DEFAULT_LISTEN: &str = "0.0.0.0:4848";
+const SRT_PORT: u16 = 4850;
 const ICON_PNG: &[u8] = include_bytes!("../assets/gl310-studio.png");
 
 fn home() -> PathBuf {
@@ -110,6 +113,14 @@ fn main() -> eframe::Result {
         Ok(()) => journal.push(format!("flux réseau : {stream_url}")),
         Err(e) => journal.push(format!("flux réseau indisponible sur {listen} : {e}")),
     }
+    let srt_bind = listen.parse::<SocketAddrV4>().map(|a| SocketAddrV4::new(*a.ip(), SRT_PORT));
+    let srt_host = srt_bind.as_ref().map(|a| a.ip().to_string().replace("0.0.0.0", &host)).unwrap_or_default();
+    let srt_url = format!("srt://{srt_host}:{SRT_PORT}?mode=caller&latency={}", srt::LATENCY_MS * 1000);
+    let log = journal.clone();
+    match srt_bind.map_err(|e| e.to_string()).and_then(|bind| srt::serve(bind, hub.clone(), move |line| log.push(line))) {
+        Ok(()) => journal.push(format!("flux SRT : {srt_url}")),
+        Err(e) => journal.push(format!("flux SRT indisponible : {e}")),
+    }
     let engine = Arc::new(Engine::spawn(
         hub.clone(),
         journal.clone(),
@@ -127,12 +138,13 @@ fn main() -> eframe::Result {
             .with_min_inner_size([900.0, 560.0]),
         ..Default::default()
     };
+    let urls = StreamUrls { srt: srt_url, http: stream_url };
     let paths = Paths { settings: settings_path, recordings: recordings_dir() };
     let app_engine = engine.clone();
     let result = eframe::run_native(
         "GL310 Studio",
         options,
-        Box::new(move |_cc| Ok(Box::new(StudioApp::new(app_engine, hub, journal, outputs, paths, settings, stream_url)))),
+        Box::new(move |_cc| Ok(Box::new(StudioApp::new(app_engine, hub, journal, outputs, paths, settings, urls)))),
     );
     engine.quit();
     result

@@ -51,10 +51,12 @@ nécessaire, déjà en place sur ce PC).
 - **sorties** :
   - caméra virtuelle PipeWire **GL310** → OBS sous Linux : « Capture de périphérique vidéo (PipeWire) » ;
   - son du jeu en entrée audio **GL310-Audio** (créée au lancement, retirée à la fermeture) → OBS : « Capture d'entrée audio » ;
-  - flux MPEG-TS sur le réseau local, adresse affichée dans la fenêtre (de la forme `http://IP-DU-PORTABLE:4848/stream.ts`).
+  - flux MPEG-TS sur le réseau local, adresses affichées dans la fenêtre : **SRT** `srt://IP-DU-PORTABLE:4850?mode=caller&latency=300000`
+    (latence fixe, pour OBS) et **HTTP** `http://IP-DU-PORTABLE:4848/stream.ts` (secours, app web).
 
 **Dans OBS sur la tour** : Sources > + > **Source média** → décocher « Fichier local » → Entrée :
-`http://IP-DU-PORTABLE:4848/stream.ts` → Format d'entrée : `mpegts` → « Mise en mémoire tampon réseau » : **0 Mo** →
+`srt://IP-DU-PORTABLE:4850?mode=caller&latency=300000` (SRT : un paquet en retard est jeté, le délai ne grandit pas ;
+en HTTP, OBS ne rattrape jamais un à-coup du Wi-Fi et le délai monte pendant le live) → Format d'entrée : `mpegts` → « Mise en mémoire tampon réseau » : **0 Mo** →
 « Options FFmpeg » : **`probesize=500000 analyzeduration=500000`** (surtout pas `fflags=nobuffer`, qui ajoute 2 s) →
 cocher le décodage matériel → « Délai de reconnexion » : **1 s** (à chaque redémarrage de l'encodeur — console qui se réveille, réglage appliqué, boîtier rebranché — l'appli coupe les connexions réseau : OBS se reconnecte sur le nouveau flux au lieu de garder des horodatages remis à zéro). Sans ces options, OBS analyse ~4 s de flux avant d'afficher et garde ce retard.
 L'appli fait démarrer chaque lecteur sur une image clé : à la connexion, l'image arrive en 0 à 2 s (intervalle des

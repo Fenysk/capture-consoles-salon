@@ -20,13 +20,19 @@ pub struct Paths {
     pub recordings: PathBuf,
 }
 
+/// Adresses du flux sur le réseau local, affichées pour OBS sur la tour.
+pub struct StreamUrls {
+    pub srt: String,
+    pub http: String,
+}
+
 pub struct StudioApp {
     engine: Arc<Engine>,
     hub: Arc<Hub>,
     journal: Arc<Journal>,
     outputs: Outputs,
     paths: Paths,
-    stream_url: String,
+    urls: StreamUrls,
     applied: Settings,
     draft: Settings,
     encoder_wanted: bool,
@@ -45,10 +51,10 @@ impl StudioApp {
         outputs: Outputs,
         paths: Paths,
         settings: Settings,
-        stream_url: String,
+        urls: StreamUrls,
     ) -> Self {
         StudioApp {
-            engine, hub, journal, outputs, paths, stream_url,
+            engine, hub, journal, outputs, paths, urls,
             applied: settings, draft: settings, encoder_wanted: true,
             texture: None, shown_frame: 0, last_frame_at: None,
             recording: None, finishing: Vec::new(),
@@ -169,11 +175,16 @@ impl StudioApp {
         ui.add(egui::ProgressBar::new(self.outputs.audio_level()).desired_height(6.0));
         ui.label(RichText::new("OBS : « Capture de périphérique vidéo (PipeWire) » et « Capture d'entrée audio »").small().weak());
         ui.add_space(4.0);
-        ui.label("Flux réseau (OBS « Source média » sur la tour, app web) :");
-        // Adresse et bouton l'un sous l'autre : côte à côte, ils débordent de la colonne.
-        ui.monospace(&self.stream_url);
-        if ui.small_button("Copier l'adresse").clicked() {
-            ui.ctx().copy_text(self.stream_url.clone());
+        // Adresses et boutons l'un sous l'autre : côte à côte, ils débordent de la colonne.
+        for (label, url, button) in [
+            ("SRT, latence fixe (OBS « Source média » sur la tour) :", &self.urls.srt, "Copier l'adresse SRT"),
+            ("HTTP (secours, app web) :", &self.urls.http, "Copier l'adresse HTTP"),
+        ] {
+            ui.label(label);
+            ui.monospace(url);
+            if ui.small_button(button).clicked() {
+                ui.ctx().copy_text(url.clone());
+            }
         }
     }
 
