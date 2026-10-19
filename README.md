@@ -15,8 +15,8 @@ Console (Switch 2…) ──HDMI──▶ AVerMedia LGP Lite (GL310) ──USB�
 | Son sur la TV par la sortie HDMI du boîtier | ❌ Muet dans tous les cas (même sans PC, même avec le pilote Windows) : on utilise la prise **AUDIO OUT** ou un casque Bluetooth sur la Switch |
 | GL310 Studio natif en Rust (aperçu, enregistrement, réglages, état) | ✅ `studio-rs/`, pilote USB intégré, sans module noyau |
 | OBS sous Linux voit le boîtier | ✅ caméra virtuelle PipeWire « GL310 » + son du jeu en entrée audio « GL310-Audio » (testés sans OBS) |
-| 2. Envoyer le flux vers OBS sur la tour | ✅ Utilisé en live le 19/10 : Source média « Console de jeu » (scène « Master - AverMedia ») sur `http://IP-DU-PORTABLE:4848/stream.ts`, reconnexion 1 s, décodage matériel |
-| Mode console (`obs/mode-console.lua`) | ⏳ Écrit et testé sans OBS ; à installer et tester sur la tour, hors live |
+| 2. Envoyer le flux vers OBS sur la tour | ✅ En **SRT** depuis le 19/10 : Source média « Console de jeu » sur `srt://IP-DU-PORTABLE:4850?mode=caller&latency=300000` ; délai stable (+0,13 s en 15 min, contre +4,2 s en 14 min en HTTP). HTTP `:4848/stream.ts` en secours |
+| Mode console (`obs/mode-console.lua`) | ⏳ Écrit et testé sans OBS ; test sur la tour confié à la session maîtresse Windows, délai réglé à l'œil |
 | Lecture du flux par l'app web `stream_twitch` | ⏸ Plus tard (mpegts.js, CORS déjà ouvert) |
 | Installation (menu Démarrer, icône) | ✅ `./install.sh` |
 | Pilote noyau C (`driver/gl310`) | ⏸ Écrit et compilé, jamais chargé (Secure Boot : clé MOK non enregistrée), mis de côté |

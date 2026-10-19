@@ -464,3 +464,7 @@ Au démarrage, OBS prend ~1,5 s de retard par à-coups, puis lit à 1× (0,9995 
 rapport curseur/heure 0,99985 : 134 ms pris en 15 min (bruit de mesure), contre 4,2 s en 14 min en HTTP.
 Pentes minute par minute entre 0,99882 et 1,00033, sans tendance ; aucun saut. **Le délai ne grandit plus** :
 on garde le SRT, le HTTP 4848 reste en secours.
+
+**Clôture de la soirée (19/10)** : Fenysk abandonne la mesure HDMI du délai propre du boîtier, puisque le délai est
+corrigé par le SRT. Le délai du mode console se réglera à l'œil dans OBS. L'outil `tools/latency_probe.py` reste
+disponible. Le test du mode console sur la tour passe à la session maîtresse Windows.
