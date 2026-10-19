@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 eframe = "0.37.0"
+libc = "0.2"
 rusb = "0.9.4"
 
 [profile.release]

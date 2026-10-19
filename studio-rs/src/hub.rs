@@ -108,6 +108,23 @@ mod tests {
     }
 
     #[test]
+    fn un_client_reseau_trop_en_retard_est_coupe() {
+        // Si un client réseau ne suit plus et que sa file est pleine, alors il est coupé (il se reconnectera au
+        // direct) au lieu d'accumuler du retard, et les autres lecteurs continuent.
+        let hub = Hub::default();
+        let (pat, pmt) = (pat(0x42), pmt(0x42, 0x44, 0x45));
+        let slow = hub.subscribe_session(3);
+        let local = hub.subscribe(64);
+        hub.feed(&[pat, pmt, video_start(0x44, &[9, 7, 8, 5])].concat());
+        for i in 0..3 {
+            hub.feed(&packet(0x45, i));
+        }
+        assert_eq!(slow.try_iter().count(), 3, "ce qui était déjà en file est encore livré");
+        assert_eq!(slow.try_recv().err(), Some(std::sync::mpsc::TryRecvError::Disconnected), "puis coupé");
+        assert_eq!(received(&local).len(), 6 * PACKET, "les autres lecteurs reçoivent tout");
+    }
+
+    #[test]
     fn un_redemarrage_de_l_encodeur_coupe_les_clients_reseau() {
         // Quand l'encodeur redémarre, ses horodatages repartent de zéro et OBS se fige s'il garde la connexion :
         // les clients réseau doivent être coupés (ils se reconnectent), les lecteurs locaux continuent, et un

@@ -1,12 +1,17 @@
 //! Flux réseau : `GET /stream.ts` renvoie le MPEG-TS en direct (OBS « Source média », VLC, ffplay,
 //! et plus tard l'app web de la tour avec mpegts.js — d'où l'en-tête CORS).
-//! Un lecteur qui ne lit plus (OBS met en pause une Source média hors antenne) est coupé au bout de
-//! `STALLED_CLIENT` : sinon sa connexion resterait ouverte indéfiniment.
+//! La Source média d'OBS ne rattrape jamais un retard : un client ne peut donc pas en accumuler plus que sa file
+//! (`BACKLOG_CHUNKS`, ~1 morceau par image) et le tampon d'envoi du noyau (`SEND_BUFFER`) ; au-delà, le hub le
+//! coupe et il se reconnecte au direct. Un lecteur qui ne lit plus (Source média hors antenne) est coupé au bout de
+//! `STALLED_CLIENT`, sinon il reprendrait plus tard un flux vieux de plusieurs minutes.
 
+const BACKLOG_CHUNKS: usize = 60; // ~2 s
+const SEND_BUFFER: libc::c_int = 256 * 1024; // le noyau double la valeur : ~0,5 s à 8 Mbit/s
 const STALLED_CLIENT: Duration = Duration::from_secs(10);
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
+use std::os::fd::AsRawFd;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -54,10 +59,27 @@ fn handle(mut stream: TcpStream, hub: &Hub) -> std::io::Result<bool> {
     )?;
     stream.set_nodelay(true)?;
     stream.set_write_timeout(Some(STALLED_CLIENT))?;
-    for chunk in hub.subscribe_session(1024) {
+    limit_send_buffer(&stream)?;
+    for chunk in hub.subscribe_session(BACKLOG_CHUNKS) {
         if stream.write_all(&chunk).is_err() {
             break;
         }
     }
     Ok(true)
+}
+
+/// SO_SNDBUF fixe : sans lui, le noyau laisse grossir la file d'envoi jusqu'à 4 Mo (~4 s de retard).
+fn limit_send_buffer(stream: &TcpStream) -> std::io::Result<()> {
+    let size = SEND_BUFFER;
+    // SAFETY: descripteur valide (emprunté à `stream`), option entière de la taille annoncée.
+    let ok = unsafe {
+        libc::setsockopt(
+            stream.as_raw_fd(),
+            libc::SOL_SOCKET,
+            libc::SO_SNDBUF,
+            (&size as *const libc::c_int).cast(),
+            std::mem::size_of::<libc::c_int>() as libc::socklen_t,
+        )
+    };
+    if ok == 0 { Ok(()) } else { Err(std::io::Error::last_os_error()) }
 }

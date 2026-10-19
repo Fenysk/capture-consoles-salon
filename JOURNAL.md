@@ -1,5 +1,10 @@
 # Journal des décisions
 
+## 2026-10-19 — Un client réseau ne peut pas accumuler plus de ~2,5 s de retard
+**Contexte.** La Source média d'OBS ne rattrape jamais un à-coup : elle lit au rythme 1× et le retard pris reste dans la file du portable (mesuré : +4,2 s en 14 min de live, file TCP passée à 2,6 Mo). La file d'un lecteur du hub (1 024 morceaux, ~1 par image) pouvait retenir ~35 s, plus jusqu'à 4 Mo dans le noyau. Une connexion qui ne lit plus restait ouverte et a resservi 35 s de jeu vieux de 7 min.
+**Décision.** Les clients réseau ont une file de 60 morceaux (~2 s) et un tampon d'envoi noyau limité à 256 Kio (SO_SNDBUF). Au-delà, le hub les coupe et OBS se reconnecte au direct en ~1 s (`reconnect_delay_sec` 1), avec quelques secondes sans jeu. Un client qui ne lit plus pendant 10 s est coupé. Le vrai remède sans coupure est côté lecteur : mpegts.js avec rattrapage (`liveSync`) dans une page de stream_twitch, demandé aux sessions de la tour.
+**Renoncement.** Sauter en avant dans le flux sans couper : OBS attend la durée du saut avant d'afficher la suite, donc rien n'est gagné (non vérifié, à essayer plus tard) ; SRT (lecteur OBS inchangé, même absence de rattrapage pour le retard pris dans OBS lui-même) ; ne rien faire (le retard ne revient qu'au changement de scène).
+
 ## 2026-10-19 — Les clients réseau sont coupés à chaque redémarrage de l'encodeur
 **Contexte.** Boîtier rebranché pendant un live : l'encodeur repart avec des horodatages remis à zéro, alors que la connexion d'OBS restait ouverte. Fenysk a vu le jeu disparaître d'OBS. Deux relances de l'appli juste avant, faites en plein live sans le savoir, l'avaient déjà coupé. mpegts.js (app web) gère mal un flux dont les horodatages reculent.
 **Décision.** Le hub distingue lecteurs locaux (aperçu, caméra, enregistrement : gardés) et clients réseau (`subscribe_session` : coupés par `new_session()` avant chaque démarrage de l'encodeur, et l'en-tête PAT/PMT de l'ancien flux est oublié). OBS se reconnecte : « Délai de reconnexion » à 1 s. Ne plus relancer l'appli sans demander à la tour si Fenysk est en live.
