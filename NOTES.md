@@ -452,3 +452,9 @@ représentent ~35 s.
 OBS garde la connexion ouverte sans lire. Au retour sur la scène du jeu (19:22:56), il a repris cette connexion et
 diffusé ~35 s de jeu vieux de ~7 min, puis s'est reconnecté (saut de curseur de +451 s). Correctif :
 délai d'écriture de 10 s dans `http.rs` ; un lecteur qui ne lit plus est coupé.
+
+**Garde-fou en service (412d61b, relancé à 19:51:34 pendant la scène « Chill »)** : au retour sur « Jeu » (19:54:13,8),
+OBS montre ~1,5 s la dernière image d'avant (figée, pas de vieux jeu qui bouge), passe en ENDED (connexion fermée
+par l'appli), rouvre un flux neuf, et le jeu est en direct ~7 s après le retour (avant : ~35 s de jeu vieux de 7 min).
+Au démarrage, OBS prend ~1,5 s de retard par à-coups, puis lit à 1× (0,9995 à 1,0033). Piste côté OBS : `close_when_inactive` true
+(proposé à Fenysk par la session de la tour) ; remède de fond : lecteur mpegts.js avec rattrapage.
